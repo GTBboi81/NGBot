@@ -1,0 +1,327 @@
+# =====CTranslate2対応版 config.yaml（精度向上版 v3）=====
+# 変更点:
+# - 利用回線の判定を厳格化（顧客が明確に肯定した場合のみ）
+# - NG理由の判定を強化（留守・今忙NGの検出精度向上）
+# - バリデーション層を追加（ハルシネーション防止）
+
+# --- ファイルパス設定 ---
+path_settings:
+  # NGログ（音声ファイル）が保存されているルートフォルダ。環境に合わせて変更してください。
+  base_path: 'C:\path\to\NG_logs'
+  # base_path 直下の、テナント（拠点）ごとのサブフォルダ名。任意の名前でOK。
+  tenant_folders:
+    - 'example1'
+    - 'example2'
+    - 'example3'
+  processed_folder_name: '分析済み'
+
+# --- 実行デバイス設定 ---
+device_settings:
+  # AMD GPU: Const-me/Whisper (Direct3D 11) を使用
+  # この設定は main_v3_amd_gpu.py では使用されません
+  device: "gpu"
+
+# --- Whisper設定（Const-me/Whisper CLI版） ---
+whisper_settings:
+  # Const-me/Whisperの実行ファイル（main.exe）のパス
+  # ※絶対パス推奨、パス区切りは / または \\
+  exe_path: "C:/cli/main.exe"
+
+  # モデルファイルのパス（ggml-large-v3.bin）
+  model_path: "C:/whisper-models/ggml-large-v2.bin"
+
+  # T-1: ドメイン用語の初期プロンプト（誤認識抑制）。
+  # 未指定の場合は line_definitions から自動生成（推奨）。
+  # カスタマイズしたい場合のみ以下のコメントを外して指定:
+  # initial_prompt: "C社光、E社光、B社ひかり、A社光、F社光、光回線、継続確認。"
+
+# --- Ollama AIモデル設定 ---
+llamacpp_settings:
+  # 実際にダウンロードしたGGUFファイルのパスを指定
+  model_path: "C:/models/Llama-3-ELYZA-JP-8B-q4_k_m.gguf"
+  # GPUにオフロードするレイヤー数。-1で全レイヤーをGPUへ
+  n_gpu_layers: -1
+  # コンテキストサイズ
+  n_ctx: 8192
+
+# --- Ollama 推論オプション ---
+# 通話ログは平均500-1000文字なのでnum_ctx=2048で十分。
+# 大幅短縮で推論速度3-5倍向上。長文ログが頻発する場合のみ4096等に増やす。
+ollama_settings:
+  model_name: "elyza3"
+  num_ctx: 2048
+  num_predict: 512
+  # 留守判定を高速2段階で行う(空判定で大量の留守ファイルをLLM呼び出しスキップ)
+  enable_two_stage: true
+
+# --- 文字起こし校正設定 ---
+text_correction:
+  enable: false
+  model_name: "elyza3"
+  speed_mode: "fast"
+  correction_examples:
+    - before: "もしもしもしお忙しい中おすとでいります"
+      after: "もしもし、お忙しい中恐れ入ります"
+
+# --- パフォーマンス設定 ---
+# max_workers を Ollama サーバの実並列度より高くすると、後続リクエストが Ollama 側で
+# キュー待ちになり、HTTP client timeout (600s) を踏みやすい。
+# OLLAMA_NUM_PARALLEL=4 が Ollama サーバ側で確実に効いている前提で max_workers=4 が安全。
+# Ollama 側並列度を上げる場合は同時にここも合わせる。
+performance_settings:
+  batch_size: 10
+  max_workers: 4
+  enable_cache: true
+  retry_on_error: 3
+  save_interval: 1
+
+# --- 連続監視モード設定 ---
+# ※GUI(NGBot.exe / gui/app.py)からのスケジューラ管理に移行しました。
+#   このセクションは内部利用専用。GUIを使う場合は enable: false のまま運用してください。
+continuous_mode:
+  enable: false
+  check_interval_seconds: 300
+  max_iterations: 10
+
+# --- プロンプト最適化設定 ---
+prompt_optimization:
+  use_few_shot: true
+  use_chain_of_thought: true
+
+# --- LLMへの指示設定 ---
+conversation_context: "光回線の電話営業の音声ログで、アポインターと顧客との会話で、NGとなった音声ログ"
+
+extraction_items:
+  - name: "氏名"
+    description: "顧客の氏名。フルネームで抽出。敬称は除く"
+  - name: "郵便番号"
+    description: "7桁の郵便番号、ハイフン無し。数字のみ"
+  - name: "都道府県"
+    description: "顧客が住んでいる都道府県。正式名称で"
+  - name: "利用回線"
+    description: |
+      【重要】顧客が自分の利用回線を明確に述べた場合のみ出力。
+      アポインターが「○○光のご利用で〜」と質問しただけでは出力しない。
+      顧客が「はい」「そうです」等で肯定した場合のみ出力可能。
+      根拠がない場合は必ず「N/A」とする。推測・想像は厳禁。
+
+  - name: "携帯台数"
+    description: "顧客が明確に回答した台数のみ。ヒアリングがない場合はN/A"
+  - name: "戸建・MS"
+    description: "顧客が明確に回答した場合のみ。ヒアリングがない場合はN/A"
+  - name: "固定電話"
+    description: "顧客が明確に回答した場合のみ。ヒアリングがない場合はN/A"
+  - name: "ひかりTV"
+    description: "顧客が明確に回答した場合のみ。ヒアリングがない場合はN/A"
+  - name: "決裁者・非決裁者"
+    description: "顧客が明確に言及した場合のみ。ヒアリングがない場合はN/A"
+  - name: "NG理由"
+    description: |
+      会話全体の文脈から最も適切なNG理由を1つ選択。
+      【判定の優先順位】
+      1. 留守: 顧客の応答が一切ない、または留守電アナウンスのみ
+      2. 今忙NG: 「忙しい」「時間ない」「準備中」「バタバタ」等の時間的理由
+      3. アプローチNG: 趣旨説明前に断られた（「結構です」「いりません」等）
+      4. 具体的理由: 料金NG、家族反対、既契約NG、提供確認NG、面倒NG、不信NG
+      5. 申込意思無NG: 説明後に理由なく断られた、現状維持希望
+      6. その他: 上記のいずれにも該当しない特殊ケース
+
+  - name: "NG理由箇所"
+    description: "NG理由の根拠となる顧客の発言を、会話テキストからそのまま抜き出す"
+
+# --- 利用回線の定義 ---
+line_definitions:
+  - name: "A社光"
+  - name: "B社ひかり"
+  - name: "C社光"
+  - name: "D社ひかり"
+  - name: "E社光"
+  - name: "F社光"
+  - name: "CATV（ケーブルテレビ）"
+  - name: "その他回線"
+  - name: "N/A"
+
+# --- NG理由の定義 ---
+# ※以下は動作確認用のサンプル定義です。実運用では自社の分類基準に差し替えてください。
+#   カテゴリ名を変更する場合は tests/golden_set/*_expected.json も合わせて更新してください。
+ng_reason_definitions:
+  - name: "留守"
+    description: |
+      【最優先で判定】留守番電話、または顧客との実際の会話がない場合。
+      留守電のアナウンス、アポインターの発言のみで顧客の応答がない、極端に短い会話などが該当する。
+      顧客の発言が1つでもあれば留守ではない。
+
+  - name: "今忙NG"
+    description: |
+      顧客が時間的な理由で会話を終了した場合。「忙しい」「時間がない」「出かける」など。
+      時間的な理由が明確に述べられている場合のみ該当する。
+
+  - name: "アプローチNG"
+    description: |
+      趣旨説明・サービス内容の説明に入る前に断られた場合。
+      挨拶や自己紹介の直後の拒否が該当する。具体的な説明のあとの拒否は含まない。
+
+  - name: "料金NG"
+    description: |
+      料金が高い、予算に合わないことが明確な理由の場合。料金の話題が出たあとの拒否であること。
+
+  - name: "家族反対"
+    description: |
+      家族がすでに反対の意思を示していることが理由の場合。
+      「家族に相談してから」は該当せず、申込意思無NGとする。
+
+  - name: "提供確認NG"
+    description: |
+      サービス提供エリア外、または技術的に提供できない場合。
+      住所確認や提供判定のやり取りがない場合は該当しない。
+
+  - name: "既契約NG"
+    description: |
+      すでに同等のサービスを契約済みで、それを理由に断る場合。
+      「今のプランでいい」は該当せず、申込意思無NGとする。
+
+  - name: "面倒NG"
+    description: |
+      手続きの煩雑さや手間が理由で断る場合。
+
+  - name: "不信NG"
+    description: |
+      電話や会社への不信感が理由で断る場合。
+
+  - name: "申込意思無NG"
+    description: |
+      具体的な理由なく断る、または現状維持を希望する場合。
+      趣旨説明前の拒否はアプローチNGとする。
+
+  - name: "その他"
+    description: |
+      上記のいずれにも明確に該当しない場合。
+      安易に選ばず、必ず他の理由を十分に検討すること。
+
+# --- NG理由判定のFew-shot例 ---
+# ※ここに掲載している会話はすべて架空のサンプルです。実際の通話ログは含みません。
+#   実運用では、自社の通話内容と分類に合わせた例へ差し替えてください。
+ng_examples:
+  - text: "（文字起こし失敗）"
+    ng_reason: "留守"
+    ng_location: "N/A"
+    line: "N/A"
+    explanation: "文字起こし失敗は音声がない/聞き取れないため留守扱い"
+
+  - text: "ただいま留守にしております。発信音のあとにメッセージをお願いいたします。"
+    ng_reason: "留守"
+    ng_location: "ただいま留守にしております"
+    line: "N/A"
+    explanation: "留守番電話のアナウンスのみ→留守"
+
+  - text: "お忙しいところ失礼いたします。ご自宅でご利用中の光回線についてご連絡しております。継続確認のご案内でして。"
+    ng_reason: "留守"
+    ng_location: "N/A"
+    line: "N/A"
+    explanation: "アポインターの発言のみで顧客応答なし→留守"
+
+  - text: "お忙しいところ失礼いたします。ご自宅の光回線の件でご連絡しました。あー、今ちょっと出かけるところなので。すみません、失礼します。"
+    ng_reason: "今忙NG"
+    ng_location: "今ちょっと出かけるところなので"
+    line: "N/A"
+    explanation: "「出かけるところ」という時間的理由で断られている→今忙NG"
+
+  - text: "ご利用中の光回線はC社光でお間違いないでしょうか。あ、結構です。いりません。失礼します。"
+    ng_reason: "アプローチNG"
+    ng_location: "結構です。いりません。"
+    line: "N/A"
+    explanation: "アポインターが回線を質問しただけで顧客が肯定していない→利用回線はN/A。趣旨説明前に終了→アプローチNG"
+
+  - text: "現在ご利用の光回線はA社光で間違いないでしょうか。はい、そうです。ありがとうございます。今より月々のご料金がお安くなるご案内でして。うーん、今のままで問題ないので大丈夫です。"
+    ng_reason: "申込意思無NG"
+    ng_location: "今のままで問題ないので大丈夫です。"
+    line: "A社光"
+    explanation: "顧客が「はい、そうです」で回線を肯定→A社光。説明後に現状維持希望→申込意思無NG"
+
+# --- バリデーション設定 ---
+# ※以下のキーワードも動作確認用のサンプルです。実運用では自社の会話傾向に合わせて調整してください。
+validation_settings:
+  # 利用回線のバリデーション
+  line_validation:
+    # 顧客の肯定表現（これがない場合は利用回線をN/Aに補正）
+    customer_confirmation_keywords:
+      - "はい"
+      - "そうです"
+      - "そうですね"
+      - "ええ"
+      - "間違いない"
+      - "その通り"
+      - "使ってます"
+      - "使っています"
+      - "契約してます"
+      - "ありがとうございます"
+    # アポインターの質問パターン（これだけでは利用回線を出力しない）
+    appointer_question_patterns:
+      - "ご利用でお間違いないでしょうか"
+      - "ご利用で間違いない"
+      - "継続中で間違いない"
+      - "のご利用で"
+
+  # 留守判定のバリデーション
+  rusu_validation:
+    # この文字数以下で顧客応答キーワードがなければ留守に補正
+    short_text_threshold: 30
+    # 顧客の応答を示すキーワード（これがあれば留守ではない）
+    customer_response_keywords:
+      - "もしもし"
+      - "はい"
+      - "いいえ"
+      - "結構です"
+      - "いりません"
+      - "大丈夫です"
+      - "忙しい"
+      - "時間"
+      - "ごめんなさい"
+      - "すみません"
+      - "ありがとう"
+      - "ちょっと"
+      - "今"
+      - "後で"
+      - "また"
+    # 留守を示すキーワード
+    rusu_keywords:
+      - "留守"
+      - "留守番電話"
+      - "録音"
+      - "メッセージ"
+      - "発信音"
+      - "応答できません"
+      - "お待ちしております"
+      - "文字起こし失敗"
+
+  # 今忙NG判定のキーワード
+  ima_isogashi_keywords:
+    - "忙しい"
+    - "時間がない"
+    - "時間ない"
+    - "急いでる"
+    - "出かける"
+    - "来客"
+    - "仕事中"
+    - "手が離せない"
+    - "後にして"
+    - "今ちょっと"
+    - "バタバタ"
+    - "取り込み中"
+    - "準備中"
+    - "これから出る"
+    - "出かけるところ"
+    - "電話できない"
+
+    # --- Chatwork通知設定 ---
+# APIトークン・ルームIDは環境変数で上書き可能:
+#   NGBOT_CHATWORK_TOKEN   ... APIトークン（必須: 平文でここに書かない）
+#   NGBOT_CHATWORK_ROOM_ID ... ルームID
+chatwork_settings:
+  enable: true
+  api_token: ""   # ← 平文記載禁止。環境変数 NGBOT_CHATWORK_TOKEN を使用
+  room_id: ""     # ← 通知先ルームID。環境変数 NGBOT_CHATWORK_ROOM_ID で上書き可能
+gui_schedule:
+  enabled: true
+  daily_time: 00:00
+  target_days_ago: 2

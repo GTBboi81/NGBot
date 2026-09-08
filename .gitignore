@@ -1,0 +1,69 @@
+# ===== Secrets =====
+.env
+*.local
+
+# ===== エージェントツールのローカル状態（実行ログ等が入るため丸ごと除外） =====
+.claude/
+.harness-mem/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# ===== Virtual environment =====
+venv/
+.venv/
+env/
+
+# ===== Models / large binaries (download separately) =====
+.models/
+.cache/
+kotoba-whisper-ct2/
+*.gguf
+*.bin
+*.ct2
+ffmpeg.exe
+
+# ===== Audio / media data =====
+mp3_files/
+
+# ===== Generated outputs =====
+# Root-level CSVs are run outputs / comparison dumps (results, 校正*, all_results)
+/*.csv
+# Test run outputs (canary runs etc.)
+tests/results/
+tests/canary_workspace/
+
+# ===== Golden set: PII protection =====
+# 実データ（実際の通話文字起こし・氏名・電話番号）は絶対に追跡しない。
+# 追跡するのは公開用の合成サンプル(sample_*)と例示manifestとREADMEのみ。
+tests/golden_set/*
+!tests/golden_set/README.md
+!tests/golden_set/manifest.example.json
+!tests/golden_set/sample_*_input.txt
+!tests/golden_set/sample_*_expected.json
+!tests/golden_set/sample_*_proposed.json
+
+# ===== Logs =====
+*.log
+*.log.*
+audio_analysis.log*
+build_log.txt
+
+# ===== Runtime state =====
+.gui_state.json
+.processed_files.txt
+
+# ===== Backups =====
+*.bak
+config.yaml.bak.*
+config.yaml.preroll.*
+
+# ===== OS / editor =====
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/

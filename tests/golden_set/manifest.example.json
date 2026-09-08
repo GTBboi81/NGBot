@@ -1,0 +1,52 @@
+[
+  {
+    "id": "sample_001",
+    "src_csv": "sample",
+    "電話番号": "0000000001",
+    "テナント": "example1",
+    "NG理由_AI": "留守",
+    "char_len": 40,
+    "length_bucket": "XS",
+    "reviewed": true
+  },
+  {
+    "id": "sample_002",
+    "src_csv": "sample",
+    "電話番号": "0000000002",
+    "テナント": "example1",
+    "NG理由_AI": "今忙NG",
+    "char_len": 95,
+    "length_bucket": "S",
+    "reviewed": true
+  },
+  {
+    "id": "sample_003",
+    "src_csv": "sample",
+    "電話番号": "0000000003",
+    "テナント": "example2",
+    "NG理由_AI": "アプローチNG",
+    "char_len": 55,
+    "length_bucket": "XS",
+    "reviewed": true
+  },
+  {
+    "id": "sample_004",
+    "src_csv": "sample",
+    "電話番号": "0000000004",
+    "テナント": "example2",
+    "NG理由_AI": "申込意思無NG",
+    "char_len": 160,
+    "length_bucket": "M",
+    "reviewed": true
+  },
+  {
+    "id": "sample_005",
+    "src_csv": "sample",
+    "電話番号": "0000000005",
+    "テナント": "example3",
+    "NG理由_AI": "料金NG",
+    "char_len": 120,
+    "length_bucket": "S",
+    "reviewed": true
+  }
+]
