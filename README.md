@@ -22,7 +22,7 @@
 | Whisper モデル | `ggml-*.bin` / CTranslate2 モデル | 各配布元から取得 |
 | ffmpeg | `ffmpeg.exe` | 公式サイトから取得しパスを通す |
 | 音声データ | 通話 mp3、結果 CSV | — |
-| 認証情報 | Chatwork トークン / ルームID | `.env` もしくは環境変数で設定 |
+| 認証情報 | Chatwork トークン / ルームID | Windows ユーザー環境変数（`setx`）で設定 |
 | 実評価データ | 実通話のゴールデンセット（PII） | `tests/build_golden_set.py` で自前構築 |
 
 同梱の `tests/golden_set/sample_*` は**架空の会話**による動作確認用サンプルです。
@@ -45,7 +45,6 @@ pip install -r requirements.txt
 ollama create elyza3 -f Modelfile
 
 # 3. 設定ファイルを自分の環境に合わせて編集
-copy .env.example .env   # トークン等を設定
 #    config.yaml の path_settings / whisper_settings / ollama_settings を編集
 ```
 
@@ -56,14 +55,19 @@ copy .env.example .env   # トークン等を設定
 - `whisper_settings` … Whisper 実行ファイル/モデルのパス
 - `ollama_settings.model_name` … 使用する Ollama モデルのタグ（例: `elyza3`）
 - `extraction_items` / `ng_reason_definitions` … 抽出項目と NG 理由の定義（プロンプトに反映）
-- `chatwork_settings` … 通知設定（トークン/ルームIDは環境変数推奨）
+- `chatwork_settings` … 通知設定（トークン/ルームIDは環境変数で設定し、この YAML には書かない）
 
-認証情報は平文で書かず、環境変数で渡してください:
+認証情報は設定ファイルに平文で書かず、Windows のユーザー環境変数で渡してください。
+`config.yaml` の `chatwork_settings.api_token` / `room_id` は空のままにしてください
+（環境変数が空の場合のみフォールバックとして参照されます）。
 
+```bat
+setx NGBOT_CHATWORK_TOKEN "＜Chatwork APIトークン＞"
+setx NGBOT_CHATWORK_ROOM_ID "＜通知先ルームID＞"
 ```
-NGBOT_CHATWORK_TOKEN    … Chatwork APIトークン
-NGBOT_CHATWORK_ROOM_ID  … 通知先ルームID
-```
+
+`setx` は新しく開いたコマンドプロンプト/GUI から有効になります。
+トークンが未設定の場合、Chatwork 通知は自動的に無効化されます（起動時に警告ログが出ます）。
 
 ---
 
