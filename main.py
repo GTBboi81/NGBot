@@ -19,7 +19,6 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import hashlib
-import pickle
 from pathlib import Path
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -770,9 +769,10 @@ class AudioAnalyzer:
         if file_hash == "error_hash":
             return None
 
-        # 新形式(JSON)を優先、旧形式(pickle)は後方互換として読み込み
+        # キャッシュは JSON のみを読む。
+        # 旧形式(.pkl)は pickle.load() が任意コード実行になりうるため読み込まない。
+        # 既存の .pkl はキャッシュミス扱いとなり、対象ファイルは再処理される。
         json_path = os.path.join(self.cache_dir, f"{file_hash}_main.json")
-        pkl_path = os.path.join(self.cache_dir, f"{file_hash}_main.pkl")
 
         if os.path.exists(json_path):
             try:
@@ -780,22 +780,6 @@ class AudioAnalyzer:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"JSONキャッシュ読込失敗 {os.path.basename(json_path)}: {e}")
-
-        if os.path.exists(pkl_path):
-            # レガシーpickleキャッシュ（Phase 2-5より前に生成）
-            # セキュリティ上、信頼できるローカル生成ファイルのみ読み込む
-            try:
-                with open(pkl_path, "rb") as f:
-                    data = pickle.load(f)
-                # 今後はJSONで保存し直す（次回からpickleを読まずに済む）
-                try:
-                    with open(json_path, "w", encoding="utf-8") as f:
-                        json.dump(data, f, ensure_ascii=False)
-                except Exception as e:
-                    logger.warning(f"キャッシュJSON移行失敗 {os.path.basename(json_path)}: {e}")
-                return data
-            except Exception as e:
-                logger.warning(f"PKLキャッシュ読込失敗 {os.path.basename(pkl_path)}: {e}")
 
         return None
 
