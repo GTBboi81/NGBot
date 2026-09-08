@@ -2,9 +2,9 @@
 rem NGBot GUI 起動スクリプト（デスクトップショートカットからの呼び出し用）
 cd /d "%~dp0"
 
-rem --- Chatwork 認証情報（環境変数で設定。空の場合は通知が無効化されます） ---
-if not defined NGBOT_CHATWORK_TOKEN set NGBOT_CHATWORK_TOKEN=
-if not defined NGBOT_CHATWORK_ROOM_ID set NGBOT_CHATWORK_ROOM_ID=
+rem --- Chatwork 認証情報 ---
+rem トークン/ルームIDはユーザー環境変数（setx）で設定します。ここには書かないでください。
+rem 未設定の場合、通知機能は自動的に無効化されます。
 
 rem --- Ollama 高速化設定 (Phase 1) ---
 rem OLLAMA_NUM_PARALLEL: LLM 並列推論数。max_workers と整合させる。

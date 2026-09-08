@@ -1,9 +1,11 @@
 @echo off
 cd /d "%~dp0"
 
-REM --- Chatwork 認証情報（平文でconfig.yamlに書かないこと） ---
-REM 実際のトークン・ルームIDを以下に設定してください
-set NGBOT_CHATWORK_TOKEN=
-set NGBOT_CHATWORK_ROOM_ID=
+REM --- Chatwork 認証情報 ---
+REM トークン/ルームIDは Windows のユーザー環境変数で設定してください。
+REM このファイルには絶対に書き込まないでください（Git 追跡下です）。
+REM   setx NGBOT_CHATWORK_TOKEN "＜APIトークン＞"
+REM   setx NGBOT_CHATWORK_ROOM_ID "＜ルームID＞"
+REM setx 実行後は新しいコマンドプロンプトを開き直すと反映されます。
 
-call .\venv\Scripts\activate.bat && python main.py
+call .env\Scriptsctivate.bat && python main.py
