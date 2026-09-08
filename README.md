@@ -1,7 +1,7 @@
 # NGBot — 通話ログ NG理由 自動分析ボット
 
-光回線の電話営業で「NG（失注）」となった通話音声を、**完全ローカル**で
-文字起こし → LLM で構造化抽出 → CSV 出力 → Chatwork 通知する Windows 向けツールです。
+光回線の電話営業で「NG（失注）」となった通話音声を、**音声処理と LLM 推論を完全ローカルで**
+行い、文字起こし → 構造化抽出 → CSV 出力 → Chatwork 通知する Windows 向けツールです。
 
 - **文字起こし:** ローカル Whisper（Const-me/Whisper CLI もしくは faster-whisper 系）
 - **抽出/分類:** ローカル Ollama 上の日本語 LLM（例: ELYZA-Llama-3-8B）
@@ -9,7 +9,8 @@
 - **GUI:** ttkbootstrap 製のデスクトップアプリ（スケジュール実行対応）
 
 > 音声の文字起こしと LLM 推論はクラウド API に依存せず、すべて手元の PC / GPU で完結します。
-> 外部通信は Chatwork 通知（任意・件数と出力先パスのみ）だけです。詳細は「取り扱うデータと保存先」を参照してください。
+> 外部通信は Chatwork 通知（任意）だけで、通話本文・氏名・電話番号・住所は送信しません。
+> 送信される項目の一覧は「取り扱うデータと保存先」を参照してください。
 
 ---
 
@@ -39,23 +40,36 @@
 
 | 保存先 | 内容 | Git 追跡 |
 |---|---|---|
-| `<リポジトリ直下>/yyyymmdd_HHMMSS_results.csv` | 電話番号・テナント・文字起こし全文・氏名・郵便番号・都道府県・NG理由・LLM判定根拠 | 除外（`/*.csv`） |
+| `<リポジトリ直下>/yyyymmdd_HHMMSS_results.csv` | 電話番号・テナント・文字起こし全文（校正有効時は校正前の生テキストも）・`config.yaml` の `extraction_items` 全項目（氏名・郵便番号・都道府県・利用回線・携帯台数・戸建/MS・固定電話・ひかりTV・決裁者区分・NG理由・**NG理由箇所＝顧客発言の逐語引用**）・LLM判定根拠 | 除外（`/*.csv`） |
 | `.cache/{md5}_main.json` | 上記 CSV 1 行分と同じ内容 | 除外（`.cache/`） |
 | `audio_analysis.log` | 処理ファイル名・件数・エラー（通話本文は含まない） | 除外（`*.log`） |
-| `tests/golden_set/*` | `build_golden_set.py` で実 CSV から複製した評価データ | 除外（`sample_*` と README のみ追跡） |
+| `tests/golden_set/*` | `build_golden_set.py` で実 CSV から複製した評価データ | 除外（`sample_*` と `README.md` / `manifest.example.json` のみ追跡） |
+| `tests/results/*.json` | 評価時の LLM 出力と期待値。実データでゴールデンセットを作った場合は PII を含む | 除外（`tests/results/`） |
+| `tests/canary_workspace/*` | カナリア試験用にコピーした通話 mp3 の実体 | 除外（`tests/canary_workspace/`） |
+
+抽出列は `config.yaml` の `extraction_items` に連動するため、項目を増やせば CSV の列も増えます。
+処理中は `%TEMP%` 配下の一時ディレクトリに mp3 のコピーと Whisper の SRT（文字起こし全文）が展開されます。
+正常終了時に削除されますが、強制終了した場合は残ることがあります。
+
+CSV は Excel で開く運用を想定しているため、`=` `+` `-` `@` で始まるセル（先頭の空白類は除いて判定）には
+数式として実行されないようシングルクォートを付けています。表示環境によってはこのクォートが見えます。
+`tests/build_golden_set.py` は読み込み時にこれを取り除きます。
 
 運用側で必ず設計してください。
 
 - **保存場所のアクセス権:** 実行フォルダを担当者のみに限定する（NTFS ACL）。共有フォルダ直下には置かない
 - **ディスク暗号化:** BitLocker 等を有効にする
-- **保持期間と削除:** CSV・`.cache/`・`tests/golden_set/` は自動削除されません。保持期間を決めて定期削除する運用を用意する
+- **保持期間と削除:** CSV・`.cache/`・`tests/golden_set/`・`tests/results/`・`tests/canary_workspace/` は自動削除されません。保持期間を決めて定期削除する運用を用意する
 - **複製の管理:** `tests/build_golden_set.py` は実 CSV から評価用データを複製します。実行すると PII の保管場所が 1 つ増えることを理解した上で使う
 
 ### 「完全ローカル」の範囲
 
 - 音声の文字起こしと LLM 推論はすべて手元の PC / GPU で実行され、外部 API には送信されません
-- Ollama の接続先は `http://127.0.0.1:11434` にコード上で固定されています。環境変数 `OLLAMA_HOST` では変更できません
-- **例外は Chatwork 通知のみ**です。有効化した場合、HTTPS で `api.chatwork.com` に送信されます。送信内容は「処理件数」と「出力先ファイルパス」のみで、通話本文・氏名・電話番号は含みません。通知先ルームの閲覧権限と保存期間は運用側で管理してください
+- Ollama の接続先は `config.yaml` の `ollama_settings.host`、未指定なら `http://127.0.0.1:11434` です。環境変数 `OLLAMA_HOST` は参照しません（`main.py` の `resolve_ollama_host()` が接続先を明示するため）。評価スクリプト `tests/run_eval.py` も同じ関数を経由します。既定値以外を指定した場合は起動時に警告ログが出ます
+- **例外は Chatwork 通知のみ**です。有効化した場合、HTTPS で `api.chatwork.com` に送信されます。送信されるのは次の項目だけで、通話本文・氏名・電話番号・住所は含みません。
+  - 実行完了時（`main.py`）: 処理件数と出力先 CSV のフルパス
+  - GUI のスケジュール操作時（`gui/app.py`）: スケジュール時刻・次回実行日時・処理対象日・実行対象テナント名（`path_settings.tenant_folders` の値）・スキップ理由
+  - 通知先ルームの閲覧権限と保存期間は運用側で管理してください。テナント名を外部に出したくない場合は通知を無効化してください
 - Chatwork 通知が不要な場合は `config.yaml` の `chatwork_settings.enable` を `false` にしてください
 
 ---
@@ -88,8 +102,8 @@ ollama create elyza3 -f Modelfile
 - `chatwork_settings` … 通知設定（トークン/ルームIDは環境変数で設定し、この YAML には書かない）
 
 認証情報は設定ファイルに平文で書かず、Windows のユーザー環境変数で渡してください。
-`config.yaml` の `chatwork_settings.api_token` / `room_id` は空のままにしてください
-（環境変数が空の場合のみフォールバックとして参照されます）。
+APIトークンは `config.yaml` からは読み込まれません（書いても使用されず、起動時に警告が出ます）。
+ルームIDは秘密情報ではないため、`config.yaml` の `chatwork_settings.room_id` でも設定できます。
 
 ```bat
 setx NGBOT_CHATWORK_TOKEN "＜Chatwork APIトークン＞"
@@ -97,7 +111,7 @@ setx NGBOT_CHATWORK_ROOM_ID "＜通知先ルームID＞"
 ```
 
 `setx` は新しく開いたコマンドプロンプト/GUI から有効になります。
-トークンが未設定の場合、Chatwork 通知は自動的に無効化されます（起動時に警告ログが出ます）。
+トークンまたはルームIDが未設定の場合、Chatwork 通知は自動的に無効化されます（いずれも起動時に警告ログが出ます）。
 
 ---
 
@@ -127,6 +141,9 @@ python tests\run_eval.py --model elyza3
 
 # 自前の実データからゴールデンセットを構築（PII のため .gitignore 済み）
 python tests\build_golden_set.py --n 100 --since 2026-04-01
+
+# 出力された {id}_proposed.json を人手でレビューし、内容を確定したものだけ
+# {id}_expected.json にリネームすると評価対象になります（未リネームだと 0 件）
 ```
 
 `run_eval.py` は完全一致率・フィールド別精度・NG理由の混同行列・利用回線 N/A 遵守率・
@@ -140,7 +157,7 @@ python tests\build_golden_set.py --n 100 --since 2026-04-01
 main.py                 … 本体（音声収集→Whisper→LLM→バリデーション→CSV→Chatwork）
 config.yaml             … 抽出項目・NG理由定義・各種パスの設定
 Modelfile               … Ollama モデル定義（gguf は各自用意）
-gui/                    … デスクトップGUI（app / scheduler / runner / status ほか）
+gui/                    … デスクトップGUI（app / scheduler / runner / ollama_manager / config_io）
 cache_manager.py        … 文字起こし結果のキャッシュ
 log_analyzer.py         … 実行ログ分析ユーティリティ
 tests/                  … 評価・カナリア試験・ゴールデンセット構築スクリプト
