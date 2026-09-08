@@ -11,6 +11,10 @@ TEMPLATE """{{ if .System }}<|start_header_id|>system<|end_header_id|>
 {{ .Response }}<|eot_id|>"""
 
 # --- パラメータ設定 ---
+# 注意: num_ctx と temperature は main.py が推論リクエストごとに options で上書きする。
+# 実効値は temperature=0.0 / num_ctx=config.yaml の ollama_settings.num_ctx (既定 2048)。
+# ここの値は ollama run で直接叩いたときのフォールバックとして残している。
+
 # コンテキスト長 (長い会話に対応)
 PARAMETER num_ctx 8192
 
