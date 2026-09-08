@@ -79,6 +79,24 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
+# --- CSV インジェクション対策 ---
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def escape_csv_formula(value):
+    """Excel/LibreOffice で数式として解釈される先頭文字を無害化する。
+
+    先頭が = + - @ タブ CR のセルにシングルクォートを付与する。
+    文字列以外（数値・None 等）はそのまま返す。
+    読み戻し側は tests/build_golden_set.py の unescape_csv_formula() が対応する。
+    """
+    if not isinstance(value, str):
+        return value
+    if value[:1] in _CSV_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
+
 # --- Chatwork通知クラス ---
 class ChatworkNotifier:
     def __init__(self, config: dict):
@@ -724,6 +742,8 @@ class AudioAnalyzer:
                 existing_columns = [col for col in target_columns if col in df.columns]
                 
                 df = df.reindex(columns=existing_columns)
+                # Excel で開く運用のため、数式として解釈されうるセルを無害化する
+                df = df.apply(lambda s: s.map(escape_csv_formula))
                 df.to_csv(self._realtime_csv_path, index=False, encoding="shift_jis", errors="replace")
                 return True
             except PermissionError:

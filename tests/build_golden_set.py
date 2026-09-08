@@ -94,6 +94,21 @@ def _open_csv(p: Path):
     return p.open("r", encoding="cp932", errors="replace", newline="")
 
 
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def unescape_csv_formula(value):
+    """main.py の escape_csv_formula() が付けたシングルクォートを除去する。
+
+    先頭が ' で、その次が数式扱いされる文字の場合のみ剥がす。
+    エスケープ導入前に出力された古いCSVはそのまま通る（冪等）。
+    """
+    if (isinstance(value, str) and value[:1] == "'"
+            and value[1:2] in _CSV_FORMULA_PREFIXES):
+        return value[1:]
+    return value
+
+
 def load_rows(csvs: list[Path]) -> list[dict]:
     rows: dict[str, dict] = {}
     for p in csvs:
@@ -101,6 +116,7 @@ def load_rows(csvs: list[Path]) -> list[dict]:
             with _open_csv(p) as f:
                 reader = csv.DictReader(f)
                 for r in reader:
+                    r = {k: unescape_csv_formula(v) for k, v in r.items()}
                     text = (r.get("文字起こしテキスト") or "").strip()
                     if not text:
                         continue
