@@ -20,7 +20,13 @@ import urllib.error
 logger = logging.getLogger(__name__)
 
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "127.0.0.1:11434")
+# 疎通確認先。ambient な OLLAMA_HOST は意図的に参照しない。
+# 参照すると、環境汚染で外部ホストが応答したときに「Ollama 起動中」と誤判定し、
+# ローカルの ollama serve を起動しないまま main.py が接続失敗する。
+# 別ポートで運用する場合のみ NGBOT_OLLAMA_HOST で明示的に上書きする。
+# なおこの値は /api/tags による疎通確認とステータス表示にのみ使われ、
+# 通話データの送信には一切使われない（送信先は main.py 側で固定）。
+OLLAMA_HOST = os.environ.get("NGBOT_OLLAMA_HOST", "127.0.0.1:11434")
 
 
 def _is_running() -> bool:

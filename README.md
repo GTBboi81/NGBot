@@ -54,6 +54,8 @@ ollama create elyza3 -f Modelfile
 - `path_settings.tenant_folders` … 拠点ごとのサブフォルダ名
 - `whisper_settings` … Whisper 実行ファイル/モデルのパス
 - `ollama_settings.model_name` … 使用する Ollama モデルのタグ（例: `elyza3`）
+- `ollama_settings.host` … Ollama の接続先（未指定なら `http://127.0.0.1:11434` に固定。環境変数 `OLLAMA_HOST` では変更できません）
+  - GUI の起動判定先だけを変えたい場合は環境変数 `NGBOT_OLLAMA_HOST` を使います（疎通確認専用。通話データの送信先ではありません）
 - `extraction_items` / `ng_reason_definitions` … 抽出項目と NG 理由の定義（プロンプトに反映）
 - `chatwork_settings` … 通知設定（トークン/ルームIDは環境変数で設定し、この YAML には書かない）
 

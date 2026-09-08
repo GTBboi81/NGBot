@@ -579,7 +579,14 @@ class AudioAnalyzer:
         # HTTPタイムアウト。Ollamaが固まった時にここで例外を出して次回スケジュールをブロックさせない。
         # デフォルト10分。長尺ログでもこの時間内に応答が無ければ異常と判断する。
         self._llm_timeout_sec = int(ollama_settings.get("timeout_sec", 600))
-        self._ollama_client = ollama.Client(timeout=self._llm_timeout_sec)
+        # 接続先はローカルに固定する。host を渡さないと ollama クライアントは
+        # 環境変数 OLLAMA_HOST を接続先として採用するため、環境汚染や設定ミスで
+        # 通話文字起こしが外部LLMへ送信されうる。
+        # 外部の Ollama を使う場合のみ config.yaml の ollama_settings.host で明示指定する。
+        self._ollama_host = str(ollama_settings.get("host") or "http://127.0.0.1:11434")
+        self._ollama_client = ollama.Client(host=self._ollama_host,
+                                            timeout=self._llm_timeout_sec)
+        logger.info(f"Ollama接続先: {self._ollama_host}")
 
         continuous_settings = config.get("continuous_mode", {})
         self.continuous_enabled = continuous_settings.get("enable", False)
