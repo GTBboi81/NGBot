@@ -79,20 +79,43 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 
+# --- Ollama 接続先 ---
+DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434"
+
+
+def resolve_ollama_host(ollama_settings: dict) -> str:
+    """Ollama の接続先を解決する。
+
+    host を明示的に渡さないと ollama クライアントは環境変数 OLLAMA_HOST を接続先に
+    採用するため、環境汚染や設定ミスで通話文字起こしが外部LLMへ送信されうる。
+    外部の Ollama を使う場合のみ config.yaml の ollama_settings.host で明示指定する。
+    評価スクリプトなど別のクライアントを作る箇所も必ずこの関数を経由すること。
+    """
+    host = str((ollama_settings or {}).get("host") or DEFAULT_OLLAMA_HOST)
+    if host != DEFAULT_OLLAMA_HOST:
+        logger.warning(
+            f"Ollama接続先がローカル既定値ではありません: {host} "
+            "（通話文字起こしがこの宛先へ送信されます）")
+    return host
+
+
 # --- CSV インジェクション対策 ---
-_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
 def escape_csv_formula(value):
     """Excel/LibreOffice で数式として解釈される先頭文字を無害化する。
 
-    先頭が = + - @ タブ CR のセルにシングルクォートを付与する。
-    文字列以外（数値・None 等）はそのまま返す。
+    先頭の空白類（スペース・タブ・改行等）を除いた最初の文字が = + - @ のセルに
+    シングルクォートを付与する。文字列以外（数値・None 等）はそのまま返す。
     読み戻し側は tests/build_golden_set.py の unescape_csv_formula() が対応する。
+
+    既知の限界: 元データ自体が シングルクォート + 数式文字 で始まる場合はエスケープ
+    されず、読み戻し時にそのクォートが失われる。日本語の通話文字起こしでは実質発生しない。
     """
     if not isinstance(value, str):
         return value
-    if value[:1] in _CSV_FORMULA_PREFIXES:
+    if value.lstrip()[:1] in _CSV_FORMULA_PREFIXES:
         return "'" + value
     return value
 
@@ -102,12 +125,20 @@ class ChatworkNotifier:
     def __init__(self, config: dict):
         cw_settings = config.get("chatwork_settings", {})
         self.enabled = cw_settings.get("enable", False)
-        # 環境変数を優先。config.yaml 上の api_token はフォールバック（空推奨）
-        self.api_token = os.getenv("NGBOT_CHATWORK_TOKEN") or cw_settings.get("api_token", "")
+        # APIトークンは環境変数のみから取る。config.yaml は Git 追跡下のため、
+        # フォールバックを残すと平文トークンを commit する誘因になる。
+        self.api_token = os.getenv("NGBOT_CHATWORK_TOKEN", "")
+        # ルームIDは秘密情報ではないので config.yaml でも設定できる。
         self.room_id = os.getenv("NGBOT_CHATWORK_ROOM_ID") or str(cw_settings.get("room_id", ""))
         self.api_url = f"https://api.chatwork.com/v2/rooms/{self.room_id}/messages"
+        if self.enabled and cw_settings.get("api_token"):
+            logger.warning("Chatwork: config.yaml の api_token は使用されません。"
+                           "環境変数 NGBOT_CHATWORK_TOKEN を設定し、config.yaml からは削除してください")
         if self.enabled and not self.api_token:
             logger.warning("Chatwork: APIトークン未設定のため通知は無効化されます（環境変数 NGBOT_CHATWORK_TOKEN を設定してください）")
+            self.enabled = False
+        if self.enabled and not self.room_id:
+            logger.warning("Chatwork: ルームID未設定のため通知は無効化されます（環境変数 NGBOT_CHATWORK_ROOM_ID または config.yaml の room_id を設定してください）")
             self.enabled = False
 
     def send_message(self, message: str):
@@ -596,11 +627,7 @@ class AudioAnalyzer:
         # HTTPタイムアウト。Ollamaが固まった時にここで例外を出して次回スケジュールをブロックさせない。
         # デフォルト10分。長尺ログでもこの時間内に応答が無ければ異常と判断する。
         self._llm_timeout_sec = int(ollama_settings.get("timeout_sec", 600))
-        # 接続先はローカルに固定する。host を渡さないと ollama クライアントは
-        # 環境変数 OLLAMA_HOST を接続先として採用するため、環境汚染や設定ミスで
-        # 通話文字起こしが外部LLMへ送信されうる。
-        # 外部の Ollama を使う場合のみ config.yaml の ollama_settings.host で明示指定する。
-        self._ollama_host = str(ollama_settings.get("host") or "http://127.0.0.1:11434")
+        self._ollama_host = resolve_ollama_host(ollama_settings)
         self._ollama_client = ollama.Client(host=self._ollama_host,
                                             timeout=self._llm_timeout_sec)
         logger.info(f"Ollama接続先: {self._ollama_host}")

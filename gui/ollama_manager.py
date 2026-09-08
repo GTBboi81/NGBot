@@ -20,12 +20,14 @@ import urllib.error
 logger = logging.getLogger(__name__)
 
 
-# 疎通確認先。ambient な OLLAMA_HOST は意図的に参照しない。
-# 参照すると、環境汚染で外部ホストが応答したときに「Ollama 起動中」と誤判定し、
-# ローカルの ollama serve を起動しないまま main.py が接続失敗する。
-# 別ポートで運用する場合のみ NGBOT_OLLAMA_HOST で明示的に上書きする。
-# なおこの値は /api/tags による疎通確認とステータス表示にのみ使われ、
-# 通話データの送信には一切使われない（送信先は main.py 側で固定）。
+# GUI が起動する `ollama serve` のバインド先 兼 疎通確認先。
+# ambient な OLLAMA_HOST は意図的に参照しない。参照すると、環境汚染で外部ホストが
+# 応答したときに「Ollama 起動中」と誤判定し、ローカルの serve を起動しないまま
+# main.py が接続失敗する。
+# 別ポートで運用する場合は NGBOT_OLLAMA_HOST で上書きする。その場合、推論の
+# 接続先は別管理なので config.yaml の ollama_settings.host も同じ値に揃えること。
+# この値自体は /api/tags の疎通確認・ステータス表示・serve のバインド先にのみ使われ、
+# 通話データの送信先にはならない（送信先は main.py の resolve_ollama_host が決める）。
 OLLAMA_HOST = os.environ.get("NGBOT_OLLAMA_HOST", "127.0.0.1:11434")
 
 
@@ -85,9 +87,16 @@ class OllamaManager:
                 # コンソール窓を出さない + 親プロセスから独立させて kill しやすく
                 creationflags = subprocess.CREATE_NO_WINDOW
 
-            logger.info(f"Ollama 起動中: {self.exe_path} serve")
+            # serve のバインド先を疎通確認先と一致させる。親の OLLAMA_HOST を
+            # そのまま継承すると、起動したサーバと確認しに行く先が食い違い、
+            # 30秒のタイムアウト後に stop() が自分で起動したサーバを終了させる。
+            serve_env = dict(os.environ)
+            serve_env["OLLAMA_HOST"] = OLLAMA_HOST
+
+            logger.info(f"Ollama 起動中: {self.exe_path} serve (host={OLLAMA_HOST})")
             self._proc = subprocess.Popen(
                 [self.exe_path, "serve"],
+                env=serve_env,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,

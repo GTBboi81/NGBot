@@ -49,6 +49,7 @@ llamacpp_settings:
 # 大幅短縮で推論速度3-5倍向上。長文ログが頻発する場合のみ4096等に増やす。
 ollama_settings:
   model_name: "elyza3"
+  # host: "http://127.0.0.1:11434"   # 未指定ならローカル固定。外部Ollamaを使う場合のみ明示
   num_ctx: 2048
   num_predict: 512
   # 留守判定を高速2段階で行う(空判定で大量の留守ファイルをLLM呼び出しスキップ)
@@ -319,8 +320,9 @@ validation_settings:
 #   NGBOT_CHATWORK_ROOM_ID ... ルームID
 chatwork_settings:
   enable: true
-  api_token: ""   # ← 平文記載禁止。環境変数 NGBOT_CHATWORK_TOKEN を使用
-  room_id: ""     # ← 通知先ルームID。環境変数 NGBOT_CHATWORK_ROOM_ID で上書き可能
+  # APIトークンはこのファイルには書けません（書いても使用されません）。
+  # このファイルは Git 追跡下のため、環境変数 NGBOT_CHATWORK_TOKEN で渡してください。
+  room_id: ""     # 通知先ルームID。環境変数 NGBOT_CHATWORK_ROOM_ID で上書き可能
 gui_schedule:
   enabled: true
   daily_time: 00:00

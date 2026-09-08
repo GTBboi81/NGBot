@@ -61,7 +61,12 @@ class EvalAnalyzer(ngbot.AudioAnalyzer):
         self._llm_num_predict = int(ollama_settings.get("num_predict", 512))
         self._enable_two_stage = bool(ollama_settings.get("enable_two_stage", True))
         self._llm_timeout_sec = int(ollama_settings.get("timeout_sec", 600))
-        self._ollama_client = ollama.Client(timeout=self._llm_timeout_sec)
+        # 接続先は main.py と同じ解決ロジックを使う。ここで host を渡さないと
+        # 環境変数 OLLAMA_HOST が採用され、ゴールデンセット（実通話のPII）が
+        # 外部ホストへ送信されうる。
+        self._ollama_host = ngbot.resolve_ollama_host(ollama_settings)
+        self._ollama_client = ollama.Client(host=self._ollama_host,
+                                            timeout=self._llm_timeout_sec)
         self.retry_count = int(config.get("performance_settings", {}).get("retry_on_error", 3))
 
 

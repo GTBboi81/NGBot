@@ -8,4 +8,4 @@ REM   setx NGBOT_CHATWORK_TOKEN "＜APIトークン＞"
 REM   setx NGBOT_CHATWORK_ROOM_ID "＜ルームID＞"
 REM setx 実行後は新しいコマンドプロンプトを開き直すと反映されます。
 
-call .env\Scriptsctivate.bat && python main.py
+call ".\venv\Scripts\activate.bat" && python main.py
