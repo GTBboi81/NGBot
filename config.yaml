@@ -112,7 +112,7 @@ extraction_items:
     description: "顧客が明確に回答した場合のみ。ヒアリングがない場合はN/A"
   - name: "固定電話"
     description: "顧客が明確に回答した場合のみ。ヒアリングがない場合はN/A"
-  - name: "ひかりTV"
+  - name: "TVサービス"
     description: "顧客が明確に回答した場合のみ。ヒアリングがない場合はN/A"
   - name: "決裁者・非決裁者"
     description: "顧客が明確に言及した場合のみ。ヒアリングがない場合はN/A"

@@ -188,8 +188,8 @@ class LogAnalyzer:
                     warning_types['NG理由箇所の補正'] += 1
                 elif '固定電話' in warning:
                     warning_types['固定電話の補正'] += 1
-                elif 'ひかりTV' in warning:
-                    warning_types['ひかりTVの補正'] += 1
+                elif 'TVサービス' in warning:
+                    warning_types['TVサービスの補正'] += 1
                 elif '戸建・MS' in warning:
                     warning_types['戸建・MSの補正'] += 1
                 elif '携帯台数' in warning:

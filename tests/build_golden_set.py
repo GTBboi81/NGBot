@@ -29,7 +29,7 @@ OUT_DIR = PROJECT_ROOT / "tests" / "golden_set"
 # main.py の extraction_items と同じ順序
 JSON_FIELDS = [
     "氏名", "郵便番号", "都道府県", "利用回線", "携帯台数",
-    "戸建・MS", "固定電話", "ひかりTV", "決裁者・非決裁者",
+    "戸建・MS", "固定電話", "TVサービス", "決裁者・非決裁者",
     "NG理由", "NG理由箇所",
 ]
 

@@ -172,7 +172,7 @@ class NGBotApp:
         tb.Label(row, text="分").pack(side="left")
 
         # 対象日: 実行日の何日前を処理対象にするか。
-        # 1=前日(デフォルト)、2=おととい。仮想環境用PC3 からの転送遅延で 0件取りこぼしが
+        # 1=前日(デフォルト)、2=おととい。ログ転送元からの遅延で 0件取りこぼしが
         # 発生する場合は 2 以上に。値はスケジュール開始時に config.yaml に保存される。
         row_d = tb.Frame(f_sch); row_d.pack(anchor="w", pady=(4, 0))
         tb.Label(row_d, text="対象日:").pack(side="left")
@@ -718,7 +718,7 @@ class NGBotApp:
                 return
             # スケジュール発火時は GUI 入力を無視し、config の target_days_ago に従う。
             # target_days_ago=1 (デフォルト)で「実行日の前日」、2 で「おととい」を対象。
-            # 仮想環境用PC3 からの転送遅延で 0件取りこぼしが発生した場合は 2 以上を推奨。
+            # ログ転送元からの遅延で 0件取りこぼしが発生した場合は 2 以上を推奨。
             try:
                 gui_sch = config_io.load().get("gui_schedule", {}) or {}
                 days_ago = int(gui_sch.get("target_days_ago", 1))

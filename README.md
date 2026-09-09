@@ -40,7 +40,7 @@
 
 | 保存先 | 内容 | Git 追跡 |
 |---|---|---|
-| `<リポジトリ直下>/yyyymmdd_HHMMSS_results.csv` | 電話番号・テナント・文字起こし全文（校正有効時は校正前の生テキストも）・`config.yaml` の `extraction_items` 全項目（氏名・郵便番号・都道府県・利用回線・携帯台数・戸建/MS・固定電話・ひかりTV・決裁者区分・NG理由・**NG理由箇所＝顧客発言の逐語引用**）・LLM判定根拠 | 除外（`/*.csv`） |
+| `<リポジトリ直下>/yyyymmdd_HHMMSS_results.csv` | 電話番号・テナント・文字起こし全文（校正有効時は校正前の生テキストも）・`config.yaml` の `extraction_items` 全項目（氏名・郵便番号・都道府県・利用回線・携帯台数・戸建/MS・固定電話・TVサービス・決裁者区分・NG理由・**NG理由箇所＝顧客発言の逐語引用**）・LLM判定根拠 | 除外（`/*.csv`） |
 | `.cache/{md5}_main.json` | 上記 CSV 1 行分と同じ内容 | 除外（`.cache/`） |
 | `audio_analysis.log` | 処理ファイル名・件数・エラー（通話本文は含まない） | 除外（`*.log`） |
 | `tests/golden_set/*` | `build_golden_set.py` で実 CSV から複製した評価データ | 除外（`sample_*` と `README.md` / `manifest.example.json` のみ追跡） |
